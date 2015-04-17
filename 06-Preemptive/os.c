@@ -9,6 +9,9 @@
 /* Number of user task */
 #define TASK_LIMIT	3
 
+/* the basic SysTick interval */
+#define TIME_BASIC 7200000
+
 /* USART TXE Flag
  * This flag is cleared when data is written to USARTx_DR and
  * set when that data is transferred to the TDR
@@ -116,30 +119,36 @@ int main(void)
     tcb user_proc[TASK_LIMIT];
 	size_t task_count = 0;
 	size_t current_task;
+	int index;
+	int total_prio = 0;
 
 	usart_init();
 
 	print_str("OS: Starting...\n");
 	print_str("OS: First create task 1\n");
 	user_proc[0].usertask = create_task(user_proc[0].stack, &task1_func);
+	user_proc[0].priority = 3;
 	task_count += 1;
 	print_str("OS: Back to OS, create task 2\n");
 	user_proc[1].usertask = create_task(user_proc[1].stack, &task2_func);
+	user_proc[1].priority = 1;
 	task_count += 1;
 
 	print_str("\nOS: Start round-robin scheduler!\n");
 
 	/* SysTick configuration */
-	*SYSTICK_LOAD = 7200000;
+	*SYSTICK_LOAD = TIME_BASIC;
 	*SYSTICK_VAL = 0;
 	*SYSTICK_CTRL = 0x07;
 	current_task = 0;
+
 
 	while (1) {
 		print_str("OS: Activate next task\n");
 		user_proc[current_task].usertask = activate(user_proc[current_task].usertask);
 		print_str("OS: Back to OS\n");
 
+		*SYSTICK_LOAD = user_proc[current_task].priority * TIME_BASIC;
 		current_task = current_task == (task_count - 1) ? 0 : current_task + 1;
 	}
 
