@@ -97,7 +97,7 @@ void task1_func(void)
 {
 	print_str("task1: Created!\n");
 	print_str("task1: Now, return to kernel mode\n");
-	syscall(0);
+	syscall();
 	while (1) {
 		print_str("task1: Running...\n");
 		delay(1000);
@@ -108,7 +108,7 @@ void task2_func(void)
 {
 	print_str("task2: Created!\n");
 	print_str("task2: Now, return to kernel mode\n");
-	syscall(0);
+	syscall();
 	while (1) {
 		print_str("task2: Running...\n");
 		delay(1000);
