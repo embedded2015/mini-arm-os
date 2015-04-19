@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "reg.h"
 #include "asm.h"
+#include "semih.h"
 
 /* Size of our user task stacks in words */
 #define STACK_SIZE	256
@@ -96,7 +97,7 @@ void task1_func(void)
 {
 	print_str("task1: Created!\n");
 	print_str("task1: Now, return to kernel mode\n");
-	syscall();
+	syscall(0);
 	while (1) {
 		print_str("task1: Running...\n");
 		delay(1000);
@@ -107,7 +108,7 @@ void task2_func(void)
 {
 	print_str("task2: Created!\n");
 	print_str("task2: Now, return to kernel mode\n");
-	syscall();
+	syscall(0);
 	while (1) {
 		print_str("task2: Running...\n");
 		delay(1000);
@@ -119,8 +120,6 @@ int main(void)
     tcb user_proc[TASK_LIMIT];
 	size_t task_count = 0;
 	size_t current_task;
-	int index;
-	int total_prio = 0;
 
 	usart_init();
 
@@ -134,7 +133,7 @@ int main(void)
 	user_proc[1].priority = 1;
 	task_count += 1;
 
-	print_str("\nOS: Start round-robin scheduler!\n");
+	print_str("\nOS: Start priority-based scheduler!\n");
 
 	/* SysTick configuration */
 	*SYSTICK_LOAD = TIME_BASIC;
