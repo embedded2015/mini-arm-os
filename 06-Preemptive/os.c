@@ -21,8 +21,8 @@
 
 void usart_init(void)
 {
-	*(RCC_APB2ENR) |= (uint32_t) (0x00000001 | 0x00000004);
-	*(RCC_APB1ENR) |= (uint32_t) (0x00020000);
+	*(RCC_APB2ENR) |= (uint32_t)(0x00000001 | 0x00000004);
+	*(RCC_APB1ENR) |= (uint32_t)(0x00020000);
 
 	/* USART2 Configuration, Rx->PA3, Tx->PA2 */
 	*(GPIOA_CRL) = 0x00004B00;
@@ -52,12 +52,11 @@ void delay(int count)
 	while (count--);
 }
 
-struct task_c_b
-{
-    unsigned int priority;
-    unsigned int stack[STACK_SIZE];
-    unsigned int * usertask;
-    void (*task_func)(void);
+struct task_c_b {
+	unsigned int priority;
+	unsigned int stack[STACK_SIZE];
+	unsigned int * usertask;
+	void (*task_func)(void);
 } typedef tcb;
 
 /* Exception return behavior */
@@ -117,9 +116,10 @@ void task2_func(void)
 
 int main(void)
 {
-    tcb user_proc[TASK_LIMIT];
+	tcb user_proc[TASK_LIMIT];
 	size_t task_count = 0;
 	size_t current_task;
+	size_t next_task;
 
 	usart_init();
 
@@ -147,8 +147,9 @@ int main(void)
 		user_proc[current_task].usertask = activate(user_proc[current_task].usertask);
 		print_str("OS: Back to OS\n");
 
-		*SYSTICK_LOAD = user_proc[current_task].priority * TIME_BASIC;
-		current_task = current_task == (task_count - 1) ? 0 : current_task + 1;
+		current_task = next_task;
+		next_task = current_task == (task_count - 1) ? 0 : current_task + 1;
+		*SYSTICK_LOAD = user_proc[next_task].priority * TIME_BASIC;
 	}
 
 	return 0;
