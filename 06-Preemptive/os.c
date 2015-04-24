@@ -109,6 +109,7 @@ int main(void)
 	unsigned int *usertasks[TASK_LIMIT];
 	size_t task_count = 0;
 	size_t current_task;
+	size_t next_task;
 
 	usart_init();
 
@@ -127,13 +128,15 @@ int main(void)
 	*SYSTICK_VAL = 0;
 	*SYSTICK_CTRL = 0x07;
 	current_task = 0;
+	next_task = current_task == (task_count - 1) ? 0 : current_task + 1;
 
 	while (1) {
 		print_str("OS: Activate next task\n");
 		usertasks[current_task] = activate(usertasks[current_task]);
 		print_str("OS: Back to OS\n");
 
-		current_task = current_task == (task_count - 1) ? 0 : current_task + 1;
+		current_task = next_task;
+		next_task = current_task == (task_count - 1) ? 0 : current_task + 1;
 	}
 
 	return 0;
