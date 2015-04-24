@@ -5,9 +5,9 @@
 int semihost_syscall(int num, ...)
 {
 	asm(
-		"BKPT 	0xAB\n"
-		"BX 	lr\n"
-		);
+	    "BKPT 	0xAB\n"
+	    "BX 	lr\n"
+	);
 }
 
 int open(const char *pathname, int flags)
