@@ -2,12 +2,16 @@
 #include <stdint.h>
 #include "reg.h"
 #include "asm.h"
+#include "semih.h"
 
 /* Size of our user task stacks in words */
 #define STACK_SIZE	256
 
 /* Number of user task */
 #define TASK_LIMIT	3
+
+/* the basic SysTick interval */
+#define TIME_BASIC 7200000
 
 /* USART TXE Flag
  * This flag is cleared when data is written to USARTx_DR and
@@ -17,8 +21,8 @@
 
 void usart_init(void)
 {
-	*(RCC_APB2ENR) |= (uint32_t) (0x00000001 | 0x00000004);
-	*(RCC_APB1ENR) |= (uint32_t) (0x00020000);
+	*(RCC_APB2ENR) |= (uint32_t)(0x00000001 | 0x00000004);
+	*(RCC_APB1ENR) |= (uint32_t)(0x00020000);
 
 	/* USART2 Configuration, Rx->PA3, Tx->PA2 */
 	*(GPIOA_CRL) = 0x00004B00;
@@ -47,6 +51,13 @@ void delay(int count)
 	count *= 50000;
 	while (count--);
 }
+
+struct task_c_b {
+	unsigned int priority;
+	unsigned int stack[STACK_SIZE];
+	unsigned int * usertask;
+	void (*task_func)(void);
+} typedef tcb;
 
 /* Exception return behavior */
 #define HANDLER_MSP	0xFFFFFFF1
@@ -105,35 +116,40 @@ void task2_func(void)
 
 int main(void)
 {
-	unsigned int user_stacks[TASK_LIMIT][STACK_SIZE];
-	unsigned int *usertasks[TASK_LIMIT];
+	tcb user_proc[TASK_LIMIT];
 	size_t task_count = 0;
 	size_t current_task;
+	size_t next_task;
 
 	usart_init();
 
 	print_str("OS: Starting...\n");
 	print_str("OS: First create task 1\n");
-	usertasks[0] = create_task(user_stacks[0], &task1_func);
+	user_proc[0].usertask = create_task(user_proc[0].stack, &task1_func);
+	user_proc[0].priority = 3;
 	task_count += 1;
 	print_str("OS: Back to OS, create task 2\n");
-	usertasks[1] = create_task(user_stacks[1], &task2_func);
+	user_proc[1].usertask = create_task(user_proc[1].stack, &task2_func);
+	user_proc[1].priority = 1;
 	task_count += 1;
 
-	print_str("\nOS: Start round-robin scheduler!\n");
+	print_str("\nOS: Start priority-based scheduler!\n");
 
 	/* SysTick configuration */
-	*SYSTICK_LOAD = 7200000;
+	*SYSTICK_LOAD = TIME_BASIC;
 	*SYSTICK_VAL = 0;
 	*SYSTICK_CTRL = 0x07;
 	current_task = 0;
 
+
 	while (1) {
 		print_str("OS: Activate next task\n");
-		usertasks[current_task] = activate(usertasks[current_task]);
+		user_proc[current_task].usertask = activate(user_proc[current_task].usertask);
 		print_str("OS: Back to OS\n");
 
-		current_task = current_task == (task_count - 1) ? 0 : current_task + 1;
+		current_task = next_task;
+		next_task = current_task == (task_count - 1) ? 0 : current_task + 1;
+		*SYSTICK_LOAD = user_proc[next_task].priority * TIME_BASIC;
 	}
 
 	return 0;
