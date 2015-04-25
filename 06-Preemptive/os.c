@@ -48,10 +48,10 @@ void delay(int count)
 	while (count--);
 }
 
-struct task_c_b {
+typedef struct {
 	unsigned int stack[STACK_SIZE];
 	unsigned int * usertask;
-} typedef tcb;
+} tcb;
 
 /* Exception return behavior */
 #define HANDLER_MSP	0xFFFFFFF1
