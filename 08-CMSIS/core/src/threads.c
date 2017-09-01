@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include "threads.h"
-#include "os.h"
+#include "config.h"
 #include "malloc.h"
 #include "reg.h"
 
@@ -26,8 +26,8 @@ void __attribute__((naked)) pendsv_handler()
 	/* Save the old task's context */
 	asm volatile("mrs   r0, psp\n"
 	             "stmdb r0!, {r4-r11, lr}\n");
-	/* To get the task pointer address from result r0 */
-	asm volatile("mov   %0, r0\n" : "=r" (tasks[lastTask].stack));
+	/* To save the last task's sp from r0 into its tcb*/
+	asm volatile("mov   %0, r0\n" : "=r"(tasks[lastTask].stack));
 
 	/* Find a new task to run */
 	while (1) {
@@ -36,7 +36,7 @@ void __attribute__((naked)) pendsv_handler()
 			lastTask = 0;
 		if (tasks[lastTask].in_use) {
 			/* Move the task's stack pointer address into r0 */
-			asm volatile("mov r0, %0\n" : : "r" (tasks[lastTask].stack));
+			asm volatile("mov r0, %0\n" : : "r"(tasks[lastTask].stack));
 			/* Restore the new task's context and jump to the task */
 			asm volatile("ldmia r0!, {r4-r11, lr}\n"
 			             "msr psp, r0\n"
@@ -45,30 +45,25 @@ void __attribute__((naked)) pendsv_handler()
 	}
 }
 
-void systick_handler()
-{
-	*SCB_ICSR |= SCB_ICSR_PENDSVSET;
-}
 
 void thread_start()
 {
 	lastTask = 0;
+	CONTROL_Type user_ctx = {
+		.b.nPRIV = 1,
+		.b.SPSEL = 1
+	};
 
 	/* Save kernel context */
 	asm volatile("mrs ip, psr\n"
 	             "push {r4-r11, ip, lr}\n");
 
-	/* To bridge the variable in C and the register in ASM,
-	 * move the task's stack pointer address into r0.
-	 * http://www.ethernut.de/en/documents/arm-inline-asm.html
-	 */
-	asm volatile("mov r0, %0\n" : : "r" (tasks[lastTask].stack));
 	/* Load user task's context and jump to the task */
-	asm volatile("msr psp, r0\n"
-	             "mov r0, #3\n"
-	             "msr control, r0\n"
-	             "isb\n"
-	             "pop {r4-r11, lr}\n"
+	__set_PSP((uint32_t)tasks[lastTask].stack);
+	__set_CONTROL(user_ctx.w);
+	__ISB();
+
+	asm volatile("pop {r4-r11, lr}\n"
 	             "pop {r0}\n"
 	             "bx lr\n");
 }
@@ -126,9 +121,9 @@ void thread_self_terminal()
 	/* This will kill the stack.
 	 * For now, disable context switches to save ourselves.
 	 */
-	asm volatile("cpsid i\n");
+	__disable_irq();
 	thread_kill(lastTask);
-	asm volatile("cpsie i\n");
+	__enable_irq();
 
 	/* And now wait for death to kick in */
 	while (1);

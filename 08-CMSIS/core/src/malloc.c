@@ -1,6 +1,6 @@
 #include <stddef.h>
 #include "malloc.h"
-#include "os.h"
+#include "config.h"
 
 typedef long Align;
 
@@ -59,12 +59,12 @@ void *malloc(unsigned int nbytes)
 
 		if (p == freep) {
 			cp = sbrk(nunits * sizeof(Header));
-			if (cp == (void *) -1) {
+			if (cp == (void *) - 1) {
 				return NULL;
 			} else {
 				p = (Header *) cp;
 				p->s.size = nunits;
-				free((void *) (p + 1));
+				free((void *)(p + 1));
 				p = freep;
 			}
 		}
